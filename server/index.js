@@ -13,6 +13,11 @@ const myCache = new NodeCache({ stdTTL: 300, checkperiod: 120 });
 app.use(cors());
 app.use(express.json());
 
+// Juurireitti UptimeRobotia varten
+app.get('/', (req, res) => {
+  res.send('Server is running.');
+});
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fso-naytto';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
