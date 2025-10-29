@@ -126,6 +126,11 @@ app.put('/api/leaderboard/:category', requireAdmin, async (req, res) => {
     { entries: sanitized, updatedAt: new Date() },
     { upsert: true, new: true }
   );
+
+  // Tyhjennetään välimuisti, jotta uudet pisteet näkyvät heti
+  const cacheKey = `leaderboard_${category}`;
+  myCache.del(cacheKey);
+
   return res.json({ category: updated.category, entries: updated.entries, updatedAt: updated.updatedAt });
 });
 
@@ -143,6 +148,11 @@ app.put('/api/leaderboard/:category/source', requireAdmin, async (req, res) => {
       { sourceUrl: url, updatedAt: new Date() },
       { upsert: true, new: true }
     );
+
+    // Tyhjennetään välimuisti tältä kategorialta, jotta uusi data haetaan
+    const cacheKey = `leaderboard_${category}`;
+    myCache.del(cacheKey);
+
     return res.json({ category: updated.category, sourceUrl: updated.sourceUrl });
   } catch (e) {
     return res.status(500).json({ error: 'URL:n tallennus epäonnistui' });
