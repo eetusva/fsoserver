@@ -3,11 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import NodeCache from 'node-cache';
 import { getDriverPoints } from './datasearch.js';
 
 dotenv.config();
 
 const app = express();
+const myCache = new NodeCache({ stdTTL: 300, checkperiod: 120 });
 app.use(cors());
 app.use(express.json());
 
@@ -80,18 +82,32 @@ app.get('/api/content/:key', async (req, res) => {
 // Leaderboard-reitit
 app.get('/api/leaderboard/:category', async (req, res) => {
   const { category } = req.params;
+  const cacheKey = `leaderboard_${category}`;
+
+  // 1. Tarkista onko data välimuistissa
+  const cachedData = myCache.get(cacheKey);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
+
+  // 2. Jos ei, hae data normaalisti
   const doc = await Leaderboard.findOne({ category });
 
   if (doc && doc.sourceUrl) {
     try {
       const entries = await getDriverPoints(doc.sourceUrl);
-      // driver' -> 'name' 
       const formattedEntries = entries.map(e => ({ name: e.driver, points: e.points }));
-      return res.json({ category: doc.category, entries: formattedEntries, sourceUrl: doc.sourceUrl, updatedAt: new Date() });
+      const responseData = { category: doc.category, entries: formattedEntries, sourceUrl: doc.sourceUrl, updatedAt: new Date() };
+      
+      // 3. Tallenna tuore data välimuistiin
+      myCache.set(cacheKey, responseData);
+
+      return res.json(responseData);
     } catch (error) {
-      // debuggia
       console.error(`Datan haku epäonnistui osoitteesta ${doc.sourceUrl}:`, error.message);
-      return res.json({ category, entries: [], sourceUrl: doc.sourceUrl, error: 'Pisteiden haku epäonnistui' });
+      // Palauta vanha data jos sellainen on, ettei sivu hajoa
+      const staleData = { category, entries: doc.entries || [], sourceUrl: doc.sourceUrl, error: 'Pisteiden haku epäonnistui, näytetään vanhentunutta dataa.' };
+      return res.json(staleData);
     }
   }
 
