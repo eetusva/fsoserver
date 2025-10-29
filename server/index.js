@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import NodeCache from 'node-cache';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { getDriverPoints } from './datasearch.js';
 
 dotenv.config();
@@ -12,6 +14,11 @@ const app = express();
 const myCache = new NodeCache({ stdTTL: 300, checkperiod: 120 });
 app.use(cors());
 app.use(express.json());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, '../build')));
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fso-naytto';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -90,7 +97,6 @@ app.get('/api/leaderboard/:category', async (req, res) => {
     return res.json(cachedData);
   }
 
-  // 2. Jos ei, hae data normaalisti
   const doc = await Leaderboard.findOne({ category });
 
   if (doc && doc.sourceUrl) {
@@ -160,6 +166,12 @@ app.put('/api/content/:key', requireAdmin, async (req, res) => {
     { upsert: true, new: true }
   );
   return res.json({ key: updated.key, body: updated.body, updatedAt: updated.updatedAt });
+});
+
+// "Catch-all" reitti, joka palauttaa aina index.html:n.
+// Tämän tulee olla viimeinen reitti.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build/index.html'));
 });
 
 const PORT = process.env.PORT || 3001;
