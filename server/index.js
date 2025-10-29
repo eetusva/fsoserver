@@ -18,7 +18,9 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(express.static(path.join(__dirname, '../build')));
+// Palvellaan staattisia tiedostoja React-build kansiosta
+// Korjattu polku toimimaan Renderissä
+app.use(express.static(path.resolve(__dirname, '..', 'build')));
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fso-naytto';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -171,7 +173,8 @@ app.put('/api/content/:key', requireAdmin, async (req, res) => {
 // "Catch-all" reitti, joka palauttaa aina index.html:n.
 // Tämän tulee olla viimeinen reitti.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../build/index.html'));
+  // Korjattu polku toimimaan Renderissä
+  res.sendFile(path.resolve(__dirname, '..', 'build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3001;
