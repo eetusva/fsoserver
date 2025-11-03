@@ -44,6 +44,12 @@ const leaderboardSchema = new mongoose.Schema({
 });
 const Leaderboard = mongoose.model('Leaderboard', leaderboardSchema);
 
+const pageVisibilitySchema = new mongoose.Schema({
+  pageKey: { type: String, required: true, unique: true },
+  isVisible: { type: Boolean, default: true }
+});
+const PageVisibility = mongoose.model('PageVisibility', pageVisibilitySchema);
+
 // Yhteys MongoDB:hen
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
@@ -174,6 +180,33 @@ app.put('/api/content/:key', requireAdmin, async (req, res) => {
     { upsert: true, new: true }
   );
   return res.json({ key: updated.key, body: updated.body, updatedAt: updated.updatedAt });
+});
+
+// Näkyvyyden reitit
+app.get('/api/visibility', async (req, res) => {
+  const visibilities = await PageVisibility.find({});
+  const visibilityMap = visibilities.reduce((acc, item) => {
+    acc[item.pageKey] = item.isVisible;
+    return acc;
+  }, {});
+  res.json(visibilityMap);
+});
+
+app.put('/api/visibility/:key', requireAdmin, async (req, res) => {
+  const { key } = req.params;
+  const { isVisible } = req.body;
+
+  if (typeof isVisible !== 'boolean') {
+    return res.status(400).json({ error: 'isVisible-arvon on oltava boolean' });
+  }
+
+  const updated = await PageVisibility.findOneAndUpdate(
+    { pageKey: key },
+    { isVisible },
+    { upsert: true, new: true }
+  );
+
+  res.json({ pageKey: updated.pageKey, isVisible: updated.isVisible });
 });
 
 const PORT = process.env.PORT || 3001;
